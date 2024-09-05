@@ -76,7 +76,7 @@ class Stacking_Dataset(TrajectoryDataset):
         #     assert False, "wrong data type"
 
         data_dir = sim_framework_path("environments/dataset/data/stacking/all_data")
-        state_files = np.load(sim_framework_path(data_directory), allow_pickle=True)
+        state_files = os.listdir(sim_framework_path(data_directory))
 
         for file in state_files:
             with open(os.path.join(data_dir, file), 'rb') as f:
@@ -230,7 +230,8 @@ class Stacking_Img_Dataset(TrajectoryDataset):
         masks = []
 
         # TODO: insert data_dir here
-        state_files = np.load(sim_framework_path(data_directory), allow_pickle=True)
+        data_dir = sim_framework_path("environments/dataset/data/stacking/vision_data/")
+        state_files = os.listdir(sim_framework_path(data_directory))
 
         bp_cam_imgs = []
         inhand_cam_imgs = []

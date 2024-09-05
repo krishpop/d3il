@@ -45,7 +45,7 @@ robot_box_dists = []
 
 for file in file_lists:
 
-    arr = np.load("inside/" + file, allow_pickle=True,)
+    arr = np.load("all_data/state/" + file, allow_pickle=True,)
 
     robot_des_pos = arr['robot']['des_c_pos']
 
