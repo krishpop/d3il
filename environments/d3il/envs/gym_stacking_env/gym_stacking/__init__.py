@@ -1,6 +1,6 @@
-from gym.envs.registration import register
+from gymnasium.envs.registration import register as gymnasium_register
 
-register(
+gymnasium_register(
     id="stacking-v0",
     entry_point="gym_stacking.envs:CubeStacking_Env",
     max_episode_steps=2000,

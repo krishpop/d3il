@@ -3,7 +3,8 @@ import copy
 
 import cv2
 import numpy as np
-from gym.spaces import Box
+import gymnasium as gym
+from gymnasium.spaces import Box
 
 from environments.d3il.d3il_sim.core import Scene
 from environments.d3il.d3il_sim.core.logger import CamLogger, ObjectLogger
@@ -165,12 +166,8 @@ class CubeStacking_Env(GymEnvWrapper):
 
         self.if_vision = if_vision
 
-        self.action_space = Box(
-            low=np.array([-0.01, -0.01]), high=np.array([0.01, 0.01])
-        )
-        self.observation_space = Box(
-            low=-np.inf, high=np.inf, shape=(8, )
-        )
+        self.action_space = Box(low=-np.pi, high=np.pi, shape=(8,))
+        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(20,))
 
         self.interactive = interactive
 
@@ -328,69 +325,45 @@ class CubeStacking_Env(GymEnvWrapper):
             desiredPos=initial_cart_position, desiredQuat=[0, 1, 0, 0], duration=0.5, log=False
         )
 
-    def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
-
+    def step(self, action):
         j_pos = action[:7]
         # j_vel = action[7:14]
         gripper_width = action[-1]
 
         if gripper_width > 0.075:
-
             self.robot.open_fingers()
-
-            # if self.gripper_flag == 0:
-            #     print(0)
-            #     self.robot.open_fingers()
-            #     self.gripper_flag = 1
         else:
             self.robot.close_fingers(duration=0.0)
-            # if self.gripper_flag == 1:
-            #
-            #     print(1)
-            #     self.robot.close_fingers(duration=0.5)
-            #     print(self.robot.set_gripper_width)
-            #
-            #     self.gripper_flag = 0
 
-        # self.robot.set_gripper_width = gripper_width
-
-        # c_pos, c_quat = self.robot.getForwardKinematics(action)
-        # c_action = np.concatenate((c_pos, c_quat))
-
-        # c_pos = action[:3]
-        # c_quat = euler2quat(action[3:6])
-        # c_action = np.concatenate((c_pos, c_quat))
-
-        self.controller.setSetPoint(action[:-1])#, desired_vel=desired_vel, desired_acc=desired_acc)
-        # self.controller.setSetPoint(action)#, desired_vel=j_vel, desired_acc=desired_acc)
+        self.controller.setSetPoint(action[:-1])
         self.controller.executeControllerTimeSteps(
             self.robot, self.n_substeps, block=False
         )
 
-        observation = self.get_observation()
-        reward = self.get_reward()
-        done = self.is_finished()
-
         for i in range(self.n_substeps):
             self.scene.next_step()
 
-        debug_info = {}
-        if self.debug:
-            debug_info = self.debug_msg()
+        observation = self.get_observation()
+        reward = self.get_reward()
+        terminated = self.is_finished()
+        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
+
+        mode_encoding, mean_distance = self.check_mode()
+        mode = ''.join(mode_encoding)
 
         self.env_step_counter += 1
 
         self.success = self._check_early_termination()
-        mode_encoding, mean_distance = self.check_mode()
 
-        mode = ''
-        mode = mode.join(mode_encoding)
+        info = {
+            'mode': mode,
+            'success': self.success,
+            'success_1': len(mode) > 0,
+            'success_2': len(mode) > 1,
+            'mean_distance': mean_distance
+        }
 
-        return observation, reward, done, {'mode': mode,
-                                           'success':  self.success,
-                                           'success_1': len(mode) > 0,
-                                           'success_2': len(mode) > 1,
-                                           'mean_distance': mean_distance}
+        return observation, reward, terminated, truncated, info
 
     def check_mode(self):
 
@@ -457,7 +430,7 @@ class CubeStacking_Env(GymEnvWrapper):
         self.bp_mode = None
         obs = self._reset_env(random=random, context=context)
 
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
 

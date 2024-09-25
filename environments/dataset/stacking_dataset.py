@@ -16,7 +16,7 @@ from torch.utils.data import TensorDataset
 from environments.dataset.base_dataset import TrajectoryDataset
 from agents.utils.sim_path import sim_framework_path
 
-from .geo_transform import quat2euler
+from geo_transform import quat2euler
 
 
 class Stacking_Dataset(TrajectoryDataset):
@@ -27,7 +27,7 @@ class Stacking_Dataset(TrajectoryDataset):
             device="cpu",
             obs_dim: int = 20,
             action_dim: int = 2,
-            max_len_data: int = 256,
+            max_len_data: int = 965,
             window_size: int = 1,
     ):
 
@@ -231,7 +231,7 @@ class Stacking_Img_Dataset(TrajectoryDataset):
 
         # TODO: insert data_dir here
         data_dir = sim_framework_path("environments/dataset/data/stacking/vision_data/")
-        state_files = os.listdir(sim_framework_path(data_directory))
+        state_files = os.listdir(os.path.join(data_dir, "state"))
 
         bp_cam_imgs = []
         inhand_cam_imgs = []
@@ -278,7 +278,7 @@ class Stacking_Img_Dataset(TrajectoryDataset):
 
                 bp_images.append(image)
 
-            bp_images = torch.concatenate(bp_images, dim=0)
+            bp_images = torch.cat(bp_images, dim=0)
             ################################################################
             inhand_imgs = glob.glob(data_dir + '/images/inhand-cam/' + file_name + '/*')
             inhand_imgs.sort(key=lambda x: int(os.path.basename(x).split('.')[0]))
@@ -290,7 +290,7 @@ class Stacking_Img_Dataset(TrajectoryDataset):
                 image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
 
                 inhand_images.append(image)
-            inhand_images = torch.concatenate(inhand_images, dim=0)
+            inhand_images = torch.cat(inhand_images, dim=0)
             ##################################################################
 
             input_state = np.concatenate((robot_des_j_pos, robot_gripper), axis=-1)
@@ -372,3 +372,8 @@ class Stacking_Img_Dataset(TrajectoryDataset):
         inhand_imgs = self.inhand_cam_imgs[i][start:end]
 
         return bp_imgs, inhand_imgs, obs, act, mask
+
+
+
+if __name__ == "__main__":
+    dataset = Stacking_Img_Dataset(data_directory="environments/dataset/data/stacking/all_data", max_len_data=965, obs_dim=8, action_dim=8)

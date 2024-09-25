@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import copy
 
-from gym.spaces import Box
+from gymnasium.spaces import Box
 
 from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 from environments.d3il.d3il_sim.core import Scene
@@ -445,6 +445,8 @@ class Sorting_Env(GymEnvWrapper):
         observation, reward, done, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
         self.success = self._check_early_termination()
         mode, min_inds = self.check_mode()
+        terminated = done
+        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
         if self.num_boxes == 2:
             mode = mode[:2]
@@ -455,7 +457,7 @@ class Sorting_Env(GymEnvWrapper):
 
         mode = self.decode_mode(mode)
 
-        return observation, reward, done, {'mode': mode, 'success':  self.success, 'min_inds': min_inds}
+        return observation, reward, terminated, truncated, {'mode': mode, 'success':  self.success, 'min_inds': min_inds}
 
     def decode_mode(self, mode):
 
@@ -554,7 +556,7 @@ class Sorting_Env(GymEnvWrapper):
         self.bp_mode = None
         obs = self._reset_env(random=random, context=context, if_vision=if_vision)
 
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None, if_vision=False):
 

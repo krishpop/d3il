@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-import gym
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium.utils import seeding
 import numpy as np
 
 from environments.d3il.d3il_sim.controllers.Controller import ControllerBase
@@ -87,7 +87,8 @@ class GymEnvWrapper(gym.Env, ABC):
 
         observation = self.get_observation()
         reward = self.get_reward()
-        done = self.is_finished()
+        terminated = self.is_finished()
+        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
         for i in range(self.n_substeps):
             self.scene.next_step()
@@ -97,7 +98,7 @@ class GymEnvWrapper(gym.Env, ABC):
             debug_info = self.debug_msg()
 
         self.env_step_counter += 1
-        return observation, reward, done, debug_info
+        return observation, reward, terminated, truncated, debug_info
 
     @abstractmethod
     def get_observation(self) -> np.ndarray:
@@ -149,7 +150,7 @@ class GymEnvWrapper(gym.Env, ABC):
     def _reset_env(self):
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
