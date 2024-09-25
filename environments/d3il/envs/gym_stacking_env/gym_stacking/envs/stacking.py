@@ -142,7 +142,8 @@ class CubeStacking_Env(GymEnvWrapper):
         random_env: bool = False,
         interactive: bool = False,
         render: bool = True,
-        if_vision: bool = False
+        if_vision: bool = False,
+        self_start: bool = False,
     ):
 
         sim_factory = MjFactory()
@@ -206,6 +207,8 @@ class CubeStacking_Env(GymEnvWrapper):
 
         self.min_inds = []
         self.mode_encoding = []
+        if self_start:
+            self.start()
 
     def robot_state(self):
         # Update Robot State
@@ -234,7 +237,13 @@ class CubeStacking_Env(GymEnvWrapper):
             inhand_image = self.inhand_cam.get_image(depth=False)
             inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
 
-            return j_state, bp_image, inhand_image
+            return {
+                "agent_pos": j_state,
+                "pixels": {
+                    "bp_image": bp_image,
+                    "inhand_image": inhand_image
+                }
+            }
 
         # robot_state = self.robot_state()
 
