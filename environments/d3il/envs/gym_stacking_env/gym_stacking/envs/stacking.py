@@ -168,7 +168,16 @@ class CubeStacking_Env(GymEnvWrapper):
         self.if_vision = if_vision
 
         self.action_space = Box(low=-np.pi, high=np.pi, shape=(8,))
-        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(20,))
+        if self.if_vision: 
+            self.observation_space = gym.spaces.Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "pixels": gym.spaces.Dict({
+                    "bp_image": Box(low=0, high=255, shape=(96, 96, 3)),
+                    "inhand_image": Box(low=0, high=255, shape=(96, 96, 3))
+                })
+            })
+        else:
+            self.observation_space = Box(low=-np.inf, high=np.inf, shape=(20,))
 
         self.interactive = interactive
 
