@@ -172,8 +172,8 @@ class CubeStacking_Env(GymEnvWrapper):
             self.observation_space = gym.spaces.Dict({
                 "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
                 "pixels": gym.spaces.Dict({
-                    "bp_image": Box(low=0, high=255, shape=(96, 96, 3)),
-                    "inhand_image": Box(low=0, high=255, shape=(96, 96, 3))
+                    "bp_image": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
+                    "inhand_image": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
                 })
             })
         else:
@@ -234,6 +234,11 @@ class CubeStacking_Env(GymEnvWrapper):
         return np.concatenate((joint_pos, gripper_width)), joint_pos, tcp_quad
         # return np.concatenate((tcp_pos, tcp_quad, gripper_width))
 
+    def render(self):
+        bp_image = self.bp_cam.get_image(depth=False)
+        bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
+        return bp_image
+        
     def get_observation(self) -> np.ndarray:
 
         j_state, robot_c_pos, robot_c_quat = self.robot_state()
