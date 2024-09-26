@@ -172,8 +172,8 @@ class CubeStacking_Env(GymEnvWrapper):
             self.observation_space = gym.spaces.Dict({
                 "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
                 "pixels": gym.spaces.Dict({
-                    "bp_image": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
-                    "inhand_image": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
+                    "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
+                    "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
                 })
             })
         else:
@@ -254,8 +254,8 @@ class CubeStacking_Env(GymEnvWrapper):
             return {
                 "agent_pos": j_state,
                 "pixels": {
-                    "bp_image": bp_image,
-                    "inhand_image": inhand_image
+                    "bp_cam": bp_image,
+                    "inhand_cam": inhand_image
                 }
             }
 
