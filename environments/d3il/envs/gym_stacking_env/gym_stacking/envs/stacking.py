@@ -381,6 +381,7 @@ class CubeStacking_Env(GymEnvWrapper):
         info = {
             'mode': mode,
             'success': self.success,
+            'is_success': self.success,
             'success_1': len(mode) > 0,
             'success_2': len(mode) > 1,
             'mean_distance': mean_distance
