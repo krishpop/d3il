@@ -134,6 +134,8 @@ class BlockContextManager:
 
 
 class CubeStacking_Env(GymEnvWrapper):
+    metadata = {"render_modes": ["rgb_array"], "render_fps": 33}
+
     def __init__(
         self,
         n_substeps: int = 30,
