@@ -146,6 +146,7 @@ class CubeStacking_Env(GymEnvWrapper):
         render: bool = True,
         if_vision: bool = False,
         self_start: bool = False,
+        action_type: str = "absolute"
     ):
 
         sim_factory = MjFactory()
@@ -158,6 +159,7 @@ class CubeStacking_Env(GymEnvWrapper):
             xml_path=d3il_path("./models/mj/robot/panda_invisible.xml"),
         )
         controller = robot.jointTrackingController
+        self.action_type = action_type
 
         super().__init__(
             scene=scene,
@@ -172,7 +174,7 @@ class CubeStacking_Env(GymEnvWrapper):
         self.action_space = Box(low=-np.pi, high=np.pi, shape=(8,))
         if self.if_vision: 
             self.observation_space = gym.spaces.Dict({
-                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(20,)),
                 "pixels": gym.spaces.Dict({
                     "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
                     "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
@@ -351,7 +353,10 @@ class CubeStacking_Env(GymEnvWrapper):
         )
 
     def step(self, action):
-        j_pos = action[:7]
+        target_j_pos = action[:7]
+        if self.action_type == "delta":
+            target_j_pos += self.robot_state()[1]
+
         # j_vel = action[7:14]
         gripper_width = action[-1]
 
@@ -360,7 +365,7 @@ class CubeStacking_Env(GymEnvWrapper):
         else:
             self.robot.close_fingers(duration=0.0)
 
-        self.controller.setSetPoint(action[:-1])
+        self.controller.setSetPoint(target_j_pos)
         self.controller.executeControllerTimeSteps(
             self.robot, self.n_substeps, block=False
         )
