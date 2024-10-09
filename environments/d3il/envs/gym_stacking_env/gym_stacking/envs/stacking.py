@@ -246,23 +246,6 @@ class CubeStacking_Env(GymEnvWrapper):
     def get_observation(self) -> np.ndarray:
 
         j_state, robot_c_pos, robot_c_quat = self.robot_state()
-
-        if self.if_vision:
-
-            bp_image = self.bp_cam.get_image(depth=False)
-            # bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
-
-            inhand_image = self.inhand_cam.get_image(depth=False)
-            # inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
-
-            return {
-                "agent_pos": j_state,
-                "pixels": {
-                    "bp_cam": bp_image,
-                    "inhand_cam": inhand_image
-                }
-            }
-
         # robot_state = self.robot_state()
 
         red_box_pos = self.scene.get_obj_pos(self.red_box)
@@ -297,6 +280,23 @@ class CubeStacking_Env(GymEnvWrapper):
                 # target_pos,
             ]
         )
+
+        if self.if_vision:
+
+            bp_image = self.bp_cam.get_image(depth=False)
+            # bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
+
+            inhand_image = self.inhand_cam.get_image(depth=False)
+            # inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
+
+            return {
+                "agent_pos": j_state,
+                "env_state": env_state,
+                "pixels": {
+                    "bp_cam": bp_image,
+                    "inhand_cam": inhand_image
+                }
+            }
 
         return env_state.astype(np.float32)
 
