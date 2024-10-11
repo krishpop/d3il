@@ -175,6 +175,7 @@ class CubeStacking_Env(GymEnvWrapper):
         if self.if_vision: 
             self.observation_space = gym.spaces.Dict({
                 "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "environment_state": Box(low=-np.inf, high=np.inf, shape=(15,)),
                 "pixels": gym.spaces.Dict({
                     "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
                     "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
@@ -249,15 +250,15 @@ class CubeStacking_Env(GymEnvWrapper):
         # robot_state = self.robot_state()
 
         red_box_pos = self.scene.get_obj_pos(self.red_box)
-        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box))[-1:])
+        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box)))
         # red_box_quat = np.concatenate((np.sin(red_box_quat), np.cos(red_box_quat)))
 
         green_box_pos = self.scene.get_obj_pos(self.green_box)
-        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box))[-1:])
+        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box)))
         # green_box_quat = np.concatenate((np.sin(green_box_quat), np.cos(green_box_quat)))
 
         blue_box_pos = self.scene.get_obj_pos(self.blue_box)
-        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box))[-1:])
+        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box)))
         # blue_box_quat = np.concatenate((np.sin(blue_box_quat), np.cos(blue_box_quat)))
 
         target_pos = self.scene.get_obj_pos(self.target_box) #- robot_c_pos
@@ -271,11 +272,11 @@ class CubeStacking_Env(GymEnvWrapper):
                 # gripper_width,
                 # robot_c_pos,
                 # robot_c_quat,
-                red_box_pos,
+                red_box_pos[:2],
                 red_box_quat,
-                green_box_pos,
+                green_box_pos[:2],
                 green_box_quat,
-                blue_box_pos,
+                blue_box_pos[:2],
                 blue_box_quat,
                 # target_pos,
             ]
@@ -291,7 +292,7 @@ class CubeStacking_Env(GymEnvWrapper):
 
             return {
                 "agent_pos": j_state,
-                "env_state": env_state,
+                "environment_state": env_state,
                 "pixels": {
                     "bp_cam": bp_image,
                     "inhand_cam": inhand_image
