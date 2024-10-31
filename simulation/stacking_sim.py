@@ -87,7 +87,7 @@ class Stacking_Sim(BaseSim):
                 # obs = env.reset()
                 # test contexts
                 # test_context = env.manager.sample()
-                obs = env.reset(random=False, context=self.test_contexts[context])
+                obs, _ = env.reset(random=False, context=self.test_contexts[context])
 
                 pred_action, _, _ = env.robot_state()
                 pred_action = pred_action.astype(np.float32)

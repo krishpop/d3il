@@ -48,7 +48,7 @@ class Avoiding_Sim(BaseSim):
 
             print(f'core {pid}, Rollout {i}')
 
-            obs = env.reset()
+            obs, _ = env.reset()
 
             pred_action = env.robot_state()
             fixed_z = pred_action[2:]
@@ -65,7 +65,7 @@ class Avoiding_Sim(BaseSim):
 
                 pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
 
-                obs, reward, done, info = env.step(pred_action)
+                obs, reward, done, truncated, info = env.step(pred_action)
 
                 c_pos.append(env.robot.current_c_pos)
 

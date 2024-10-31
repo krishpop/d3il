@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import copy
 
-from gymnasium.spaces import Box
+from gymnasium.spaces import Dict, Box
 
 from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 from environments.d3il.d3il_sim.core import Scene
@@ -46,35 +46,22 @@ class BPCageCam(MjCamera):
 class BlockContextManager:
     def __init__(self, scene, index=0, num_boxes=2, seed=42) -> None:
         self.scene = scene
-
-        np.random.seed(seed)
-
-        self.box1_space = Box(
-            low=np.array([0.4, -0.15, -90]), high=np.array([0.5, -0.1, 90])  # , seed=seed
-        )
-
-        self.box2_space = Box(
-            low=np.array([0.4, -0.05, -90]), high=np.array([0.5, 0, 90])  # , seed=seed
-        )
-
-        self.box3_space = Box(
-            low=np.array([0.4, 0.05, -90]), high=np.array([0.5, 0.1, 90])  # , seed=seed
-        )
-
-        self.box4_space = Box(
-            low=np.array([0.55, -0.15, -90]), high=np.array([0.65, -0.1, 90])  # , seed=seed
-        )
-
-        self.box5_space = Box(
-            low=np.array([0.55, -0.05, -90]), high=np.array([0.65, 0, 90])  # , seed=seed
-        )
-
-        self.box6_space = Box(
-            low=np.array([0.55, 0.05, -90]), high=np.array([0.65, 0.1, 90])  # , seed=seed
-        )
-
         self.index = index
         self.num_boxes = num_boxes
+        self.set_seed(seed)
+
+    def set_seed(self, seed):
+        self.seed = int(seed)
+        self.rng = np.random.default_rng(self.seed)
+        np.random.seed(self.seed)
+        
+        # Create Box spaces with different seeds derived from the main seed
+        self.box1_space = Box(low=np.array([0.4, -0.15, -90]), high=np.array([0.5, -0.1, 90]))
+        self.box2_space = Box(low=np.array([0.4, -0.05, -90]), high=np.array([0.5, 0, 90]))
+        self.box3_space = Box(low=np.array([0.4, 0.05, -90]), high=np.array([0.5, 0.1, 90]))
+        self.box4_space = Box(low=np.array([0.55, -0.15, -90]), high=np.array([0.65, -0.1, 90]))
+        self.box5_space = Box(low=np.array([0.55, -0.05, -90]), high=np.array([0.65, 0, 90]))
+        self.box6_space = Box(low=np.array([0.55, 0.05, -90]), high=np.array([0.65, 0.1, 90]))
 
     def start(self, random=True, context=None):
 
@@ -86,7 +73,7 @@ class BlockContextManager:
         self.set_context(self.context)
 
     def sample(self):
-
+        # Use self.rng for any additional random operations
         pos_1 = self.box1_space.sample()
         angle_1 = [0, 0, pos_1[-1] * np.pi / 180]
         quat_1 = euler2quat(angle_1)
@@ -114,7 +101,7 @@ class BlockContextManager:
         contexts = [[pos_1, quat_1], [pos_2, quat_2], [pos_3, quat_3],
                     [pos_4, quat_4], [pos_5, quat_5], [pos_6, quat_6]]
 
-        random.shuffle(contexts)
+        self.rng.shuffle(contexts)
 
         return contexts
 
@@ -191,6 +178,8 @@ class BlockContextManager:
 
 
 class Sorting_Env(GymEnvWrapper):
+    metadata = {"render_modes": ["rgb_array"], "render_fps": 33}
+
     def __init__(
         self,
         n_substeps: int = 35,
@@ -200,7 +189,8 @@ class Sorting_Env(GymEnvWrapper):
         interactive: bool = False,
         render: bool = True,
         num_boxes: int = 2,
-        if_vision: bool = False
+        if_vision: bool = False,
+        self_start: bool = False,
     ):
 
         sim_factory = MjFactory()
@@ -218,11 +208,24 @@ class Sorting_Env(GymEnvWrapper):
         scene = sim_factory.create_scene(
             object_list=obj_list, render=render_mode, dt=0.001
         )
-        robot = MjRobot(
-            scene,
-            xml_path=d3il_path("./models/mj/robot/panda_rod_invisible.xml"),
-        )
+
+        # Ensure scene is properly initialized before continuing
+        if scene.model is None or scene.data is None:
+            raise RuntimeError("Failed to initialize MuJoCo scene")
+            
+        # Initialize robot and ensure it's properly loaded
+        try:
+            robot = MjRobot(
+                scene,
+                xml_path=d3il_path("./models/mj/robot/panda_rod_invisible.xml"),
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize robot: {e}")
+            
+        # Verify controller initialization
         controller = robot.cartesianPosQuatTrackingController
+        if controller is None:
+            raise RuntimeError("Failed to initialize robot controller")
 
         super().__init__(
             scene=scene,
@@ -237,9 +240,19 @@ class Sorting_Env(GymEnvWrapper):
         self.action_space = Box(
             low=np.array([-0.01, -0.01]), high=np.array([0.01, 0.01])
         )
-        self.observation_space = Box(
-            low=-np.inf, high=np.inf, shape=(8, )
-        )
+
+        if self.if_vision:
+            self.observation_space = Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "pixels": Dict({
+                    "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
+                    "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
+                })
+            })
+        else:
+            self.observation_space = Box(
+                low=-np.inf, high=np.inf, shape=(20, )
+            )
 
         self.interactive = interactive
 
@@ -305,6 +318,14 @@ class Sorting_Env(GymEnvWrapper):
         self.mode_step = 0
         self.min_inds = []
 
+        if self_start:
+            self.start()
+
+    def render(self):
+        bp_image = self.bp_cam.get_image(depth=False)
+        # bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
+        return bp_image
+
     def get_observation(self) -> np.ndarray:
 
         robot_pos = self.robot_state()[:2]
@@ -312,12 +333,18 @@ class Sorting_Env(GymEnvWrapper):
         if self.if_vision:
 
             bp_image = self.bp_cam.get_image(depth=False)
-            bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
+            # bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
 
             inhand_image = self.inhand_cam.get_image(depth=False)
-            inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
+            # inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
 
-            return robot_pos, bp_image, inhand_image
+            return {
+                "agent_pos": robot_pos,
+                "pixels": {
+                    "bp_cam": bp_image,
+                    "inhand_cam": inhand_image
+                }
+            }
 
         red_box_1_pos = self.scene.get_obj_pos(self.red_box_1)[:2]
         red_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_1))[-1:])
@@ -554,6 +581,10 @@ class Sorting_Env(GymEnvWrapper):
         self.min_inds = []
 
         self.bp_mode = None
+        
+        if seed is not None:
+            self.manager.set_seed(seed)
+        
         obs = self._reset_env(random=random, context=context, if_vision=if_vision)
 
         return obs, {}

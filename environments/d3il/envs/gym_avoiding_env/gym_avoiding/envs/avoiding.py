@@ -55,7 +55,8 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
             n_substeps: int = 35,
             max_steps_per_episode: int = 250,
             debug: bool = False,
-            render: bool = False
+            render: bool = False,
+            self_start: bool = False,
     ):
 
         sim_factory = MjFactory()
@@ -113,6 +114,8 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         self.mode_encoding = np.zeros(2 + 3 + 4)
 
         self.success = False
+        if self_start:
+            self.start()
 
     def get_observation(self) -> np.ndarray:
         robot_c_pos = self.robot_state()[:2]
@@ -166,9 +169,9 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None):
-        observation, reward, done, _ = super().step(action, gripper_width)
+        observation, reward, terminated, truncated, _ = super().step(action, gripper_width)
         self.check_mode()
-        return observation, reward, done, (self.mode_encoding, self.success)
+        return observation, reward, terminated, truncated, (self.mode_encoding, self.success)
 
     def check_mode(self):
         r_x_pos = self.robot.current_c_pos[0]
@@ -252,7 +255,7 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         self.reset_mode_encoding()
         self.success = False
         obs = self._reset_env(random=random, context=context)
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
         self.scene.reset()
