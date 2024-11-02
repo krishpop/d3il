@@ -191,6 +191,7 @@ class Sorting_Env(GymEnvWrapper):
         num_boxes: int = 2,
         if_vision: bool = False,
         self_start: bool = False,
+        action_type: str = "absolute",
     ):
 
         sim_factory = MjFactory()
@@ -235,6 +236,7 @@ class Sorting_Env(GymEnvWrapper):
             debug=debug,
         )
 
+        self.action_type = action_type
         self.if_vision = if_vision
 
         self.action_space = Box(
@@ -469,6 +471,9 @@ class Sorting_Env(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
+        if self.action_type == "delta":
+            action = action + self.robot_state()[1]
+
         observation, reward, done, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
         self.success = self._check_early_termination()
         mode, min_inds = self.check_mode()
