@@ -1,5 +1,7 @@
 import numpy as np
 import copy
+import gymnasium as gym
+from gymnasium.spaces import Box
 from environments.d3il.d3il_sim.sims.mj_beta.mj_utils.mj_helper import has_collision
 from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 
@@ -57,6 +59,7 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
             debug: bool = False,
             render: bool = False,
             self_start: bool = False,
+            if_vision: bool = False,
     ):
 
         sim_factory = MjFactory()
@@ -77,6 +80,22 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
             n_substeps=n_substeps,
             debug=debug,
         )
+
+        self.if_vision = if_vision
+        self.action_space = Box(
+            low=np.array([-0.01, -0.01]), high=np.array([0.01, 0.01])
+        )
+        if self.if_vision: 
+            self.observation_space = gym.spaces.Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "environment_state": Box(low=-np.inf, high=np.inf, shape=(15,)),
+                "pixels": gym.spaces.Dict({
+                    "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
+                    "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
+                })
+            })
+        else:
+            self.observation_space = Box(low=-np.inf, high=np.inf, shape=(14,))
 
         self.manager = ObstacleAvoidanceManager()
 
@@ -169,6 +188,12 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None):
+        if self.self_start:
+            robot_c_pos = self.robot_state()[:2]
+            pred_action = action + robot_c_pos
+            fixed_z = init_end_eff_pos[2]
+            action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
+
         observation, reward, terminated, truncated, _ = super().step(action, gripper_width)
         self.check_mode()
         return observation, reward, terminated, truncated, (self.mode_encoding, self.success)
@@ -281,7 +306,3 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         mode_dist = counts / np.sum(counts)
         entropy = - np.sum(mode_dist * (np.log(mode_dist) / np.log(24)))
         return counts, entropy
-
-
-    def action_space(self):
-        ...

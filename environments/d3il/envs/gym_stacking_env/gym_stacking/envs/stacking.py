@@ -159,7 +159,6 @@ class CubeStacking_Env(GymEnvWrapper):
             xml_path=d3il_path("./models/mj/robot/panda_invisible.xml"),
         )
         controller = robot.jointTrackingController
-        self.action_type = action_type
 
         super().__init__(
             scene=scene,
@@ -171,6 +170,7 @@ class CubeStacking_Env(GymEnvWrapper):
 
         self.if_vision = if_vision
 
+        self.action_type = action_type
         self.action_space = Box(low=-np.pi, high=np.pi, shape=(8,))
         if self.if_vision: 
             self.observation_space = gym.spaces.Dict({

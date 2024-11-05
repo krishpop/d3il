@@ -4,7 +4,8 @@ import time
 
 import sys
 
-from gym.spaces import Box
+import gymnasium as gym
+from gymnasium.spaces import Box
 
 from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 from environments.d3il.d3il_sim.core import Scene
@@ -200,12 +201,22 @@ class Block_Push_Env(GymEnvWrapper):
             debug=debug,
         )
 
+        self.if_vision = if_vision
+        self.action_type = action_type
         self.action_space = Box(
             low=np.array([-0.01, -0.01]), high=np.array([0.01, 0.01])
         )
-        self.observation_space = Box(
-            low=-np.inf, high=np.inf, shape=(14, )
-        )
+        if self.if_vision: 
+            self.observation_space = gym.spaces.Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "environment_state": Box(low=-np.inf, high=np.inf, shape=(15,)),
+                "pixels": gym.spaces.Dict({
+                    "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
+                    "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
+                })
+            })
+        else:
+            self.observation_space = Box(low=-np.inf, high=np.inf, shape=(14,))
 
         self.interactive = interactive
 
