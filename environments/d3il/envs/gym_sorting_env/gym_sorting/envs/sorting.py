@@ -211,8 +211,8 @@ class Sorting_Env(GymEnvWrapper):
         )
 
         # Ensure scene is properly initialized before continuing
-        if scene.model is None or scene.data is None:
-            raise RuntimeError("Failed to initialize MuJoCo scene")
+        # if scene.model is None or scene.data is None:
+        #     raise RuntimeError("Failed to initialize MuJoCo scene")
             
         # Initialize robot and ensure it's properly loaded
         try:
