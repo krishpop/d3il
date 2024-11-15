@@ -245,15 +245,25 @@ class Sorting_Env(GymEnvWrapper):
 
         if self.if_vision:
             self.observation_space = Dict({
-                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(4,)),  # [des_pos, curr_pos]
                 "pixels": Dict({
                     "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
                     "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
                 })
             })
         else:
+            # Update shape based on num_boxes
+            if self.num_boxes == 2:
+                obs_dim = 8  # robot(4) + red_box1(3) + blue_box1(3)
+            elif self.num_boxes == 4:
+                obs_dim = 14  # robot(4) + red_box1,2(6) + blue_box1,2(6)
+            elif self.num_boxes == 6:
+                obs_dim = 20  # robot(4) + red_box1,2,3(9) + blue_box1,2,3(9)
+            else:
+                raise ValueError(f"Unsupported number of boxes: {self.num_boxes}")
+            
             self.observation_space = Box(
-                low=-np.inf, high=np.inf, shape=(20, )
+                low=-np.inf, high=np.inf, shape=(obs_dim,)
             )
 
         self.interactive = interactive
@@ -329,92 +339,80 @@ class Sorting_Env(GymEnvWrapper):
         return bp_image
 
     def get_observation(self) -> np.ndarray:
-
-        robot_pos = self.robot_state()[:2]
+        robot_des_pos = self.robot.desired_pos[:2]  # Get desired position
+        robot_curr_pos = self.robot_state()[:2]  # Get current position
 
         if self.if_vision:
-
             bp_image = self.bp_cam.get_image(depth=False)
-            # bp_image = cv2.cvtColor(bp_image, cv2.COLOR_RGB2BGR)
-
             inhand_image = self.inhand_cam.get_image(depth=False)
-            # inhand_image = cv2.cvtColor(inhand_image, cv2.COLOR_RGB2BGR)
 
             return {
-                "agent_pos": robot_pos,
+                "agent_pos": np.concatenate([robot_des_pos, robot_curr_pos]).astype(np.float32),
                 "pixels": {
                     "bp_cam": bp_image,
                     "inhand_cam": inhand_image
                 }
             }
 
+        # Get box positions and orientations
         red_box_1_pos = self.scene.get_obj_pos(self.red_box_1)[:2]
         red_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_1))[-1:])
-
-        red_box_2_pos = self.scene.get_obj_pos(self.red_box_2)[:2]
-        red_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_2))[-1:])
-
-        red_box_3_pos = self.scene.get_obj_pos(self.red_box_3)[:2]
-        red_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_3))[-1:])
 
         blue_box_1_pos = self.scene.get_obj_pos(self.blue_box_1)[:2]
         blue_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_1))[-1:])
 
-        blue_box_2_pos = self.scene.get_obj_pos(self.blue_box_2)[:2]
-        blue_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_2))[-1:])
+        if self.num_boxes >= 4:
+            red_box_2_pos = self.scene.get_obj_pos(self.red_box_2)[:2]
+            red_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_2))[-1:])
+            blue_box_2_pos = self.scene.get_obj_pos(self.blue_box_2)[:2]
+            blue_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_2))[-1:])
 
-        blue_box_3_pos = self.scene.get_obj_pos(self.blue_box_3)[:2]
-        blue_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_3))[-1:])
+        if self.num_boxes == 6:
+            red_box_3_pos = self.scene.get_obj_pos(self.red_box_3)[:2]
+            red_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_3))[-1:])
+            blue_box_3_pos = self.scene.get_obj_pos(self.blue_box_3)[:2]
+            blue_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_3))[-1:])
 
+        # Construct observation based on number of boxes
         if self.num_boxes == 2:
-
-            env_state = np.concatenate(
-                [
-                    robot_pos,
-                    red_box_1_pos,
-                    red_box_1_quat,
-                    blue_box_1_pos,
-                    blue_box_1_quat,
-                ]
-            )
+            env_state = np.concatenate([
+                robot_des_pos,
+                robot_curr_pos,
+                red_box_1_pos,
+                red_box_1_quat,
+                blue_box_1_pos,
+                blue_box_1_quat,
+            ])
         elif self.num_boxes == 4:
-
-            env_state = np.concatenate(
-                [
-                    robot_pos,
-                    red_box_1_pos,
-                    red_box_1_quat,
-                    red_box_2_pos,
-                    red_box_2_quat,
-                    blue_box_1_pos,
-                    blue_box_1_quat,
-                    blue_box_2_pos,
-                    blue_box_2_quat,
-                ]
-            )
-
+            env_state = np.concatenate([
+                robot_des_pos,
+                robot_curr_pos,
+                red_box_1_pos,
+                red_box_1_quat,
+                red_box_2_pos,
+                red_box_2_quat,
+                blue_box_1_pos,
+                blue_box_1_quat,
+                blue_box_2_pos,
+                blue_box_2_quat,
+            ])
         elif self.num_boxes == 6:
-
-            env_state = np.concatenate(
-                [
-                    robot_pos,
-                    red_box_1_pos,
-                    red_box_1_quat,
-                    red_box_2_pos,
-                    red_box_2_quat,
-                    red_box_3_pos,
-                    red_box_3_quat,
-                    blue_box_1_pos,
-                    blue_box_1_quat,
-                    blue_box_2_pos,
-                    blue_box_2_quat,
-                    blue_box_3_pos,
-                    blue_box_3_quat
-                ]
-            )
-
-        else:
-            assert False, "no such num boxes"
+            env_state = np.concatenate([
+                robot_des_pos,
+                robot_curr_pos,
+                red_box_1_pos,
+                red_box_1_quat,
+                red_box_2_pos,
+                red_box_2_quat,
+                red_box_3_pos,
+                red_box_3_quat,
+                blue_box_1_pos,
+                blue_box_1_quat,
+                blue_box_2_pos,
+                blue_box_2_quat,
+                blue_box_3_pos,
+                blue_box_3_quat,
+            ])
 
         return env_state.astype(np.float32)
 
