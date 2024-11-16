@@ -243,25 +243,24 @@ class Sorting_Env(GymEnvWrapper):
             low=np.array([-0.01, -0.01]), high=np.array([0.01, 0.01])
         )
 
+        if num_boxes == 2:
+            obs_dim = 14  # robot(4) + red_box1(5) + blue_box1(5)
+        elif num_boxes == 4:
+            obs_dim = 24  # robot(4) + red_box1,2(10) + blue_box1,2(10)
+        elif num_boxes == 6:
+            obs_dim = 34  # robot(4) + red_box1,2,3(15) + blue_box1,2,3(15)
+        else:
+            raise ValueError(f"Unsupported number of boxes: {num_boxes}")
+
         if self.if_vision:
             self.observation_space = Dict({
-                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(4,)),  # [des_pos, curr_pos]
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(obs_dim,)),
                 "pixels": Dict({
                     "bp_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8),
                     "inhand_cam": Box(low=0, high=255, shape=(96, 96, 3), dtype=np.uint8)
                 })
             })
         else:
-            # Update shape based on num_boxes
-            if self.num_boxes == 2:
-                obs_dim = 8  # robot(4) + red_box1(3) + blue_box1(3)
-            elif self.num_boxes == 4:
-                obs_dim = 14  # robot(4) + red_box1,2(6) + blue_box1,2(6)
-            elif self.num_boxes == 6:
-                obs_dim = 20  # robot(4) + red_box1,2,3(9) + blue_box1,2,3(9)
-            else:
-                raise ValueError(f"Unsupported number of boxes: {self.num_boxes}")
-            
             self.observation_space = Box(
                 low=-np.inf, high=np.inf, shape=(obs_dim,)
             )
@@ -339,39 +338,27 @@ class Sorting_Env(GymEnvWrapper):
         return bp_image
 
     def get_observation(self) -> np.ndarray:
-        robot_des_pos = self.robot.desired_pos[:2]  # Get desired position
+        robot_des_pos = self.robot_des_pos  # Get desired position
         robot_curr_pos = self.robot_state()[:2]  # Get current position
-
-        if self.if_vision:
-            bp_image = self.bp_cam.get_image(depth=False)
-            inhand_image = self.inhand_cam.get_image(depth=False)
-
-            return {
-                "agent_pos": np.concatenate([robot_des_pos, robot_curr_pos]).astype(np.float32),
-                "pixels": {
-                    "bp_cam": bp_image,
-                    "inhand_cam": inhand_image
-                }
-            }
 
         # Get box positions and orientations
         red_box_1_pos = self.scene.get_obj_pos(self.red_box_1)[:2]
-        red_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_1))[-1:])
+        red_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_1)))
 
         blue_box_1_pos = self.scene.get_obj_pos(self.blue_box_1)[:2]
-        blue_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_1))[-1:])
+        blue_box_1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_1)))
 
         if self.num_boxes >= 4:
             red_box_2_pos = self.scene.get_obj_pos(self.red_box_2)[:2]
-            red_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_2))[-1:])
+            red_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_2)))
             blue_box_2_pos = self.scene.get_obj_pos(self.blue_box_2)[:2]
-            blue_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_2))[-1:])
+            blue_box_2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_2)))
 
         if self.num_boxes == 6:
             red_box_3_pos = self.scene.get_obj_pos(self.red_box_3)[:2]
-            red_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_3))[-1:])
+            red_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box_3)))
             blue_box_3_pos = self.scene.get_obj_pos(self.blue_box_3)[:2]
-            blue_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_3))[-1:])
+            blue_box_3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box_3)))
 
         # Construct observation based on number of boxes
         if self.num_boxes == 2:
@@ -413,6 +400,17 @@ class Sorting_Env(GymEnvWrapper):
                 blue_box_3_pos,
                 blue_box_3_quat,
             ])
+
+        if self.if_vision:
+            bp_image = self.bp_cam.get_image(depth=False)
+            inhand_image = self.inhand_cam.get_image(depth=False)
+            return {
+                "agent_pos": env_state,
+                "pixels": {
+                    "bp_cam": bp_image,
+                    "inhand_cam": inhand_image
+                }
+            }
 
         return env_state.astype(np.float32)
 
@@ -470,13 +468,15 @@ class Sorting_Env(GymEnvWrapper):
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
         if self.action_type == "delta":
-            action = action + self.robot_state()[1]
-
-        observation, reward, done, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
+            action = action + self.robot_state()[:2]
+            self.robot_des_pos = action
+        if action.shape[0] == 2:
+            fixed_z = self.robot_state()[2:]
+            action = np.concatenate((action, fixed_z, [0, 1, 0, 0]), axis=0)
+        observation, reward, terminated, truncated, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
         self.success = self._check_early_termination()
+        terminated = terminated or self.success
         mode, min_inds = self.check_mode()
-        terminated = done
-        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
         if self.num_boxes == 2:
             mode = mode[:2]
@@ -487,7 +487,7 @@ class Sorting_Env(GymEnvWrapper):
 
         mode = self.decode_mode(mode)
 
-        return observation, reward, terminated, truncated, {'mode': mode, 'success':  self.success, 'min_inds': min_inds}
+        return observation, reward, terminated, truncated, {'mode': mode, 'is_success':  self.success, 'min_inds': min_inds}
 
     def decode_mode(self, mode):
 
@@ -543,7 +543,6 @@ class Sorting_Env(GymEnvWrapper):
         return 0
 
     def _check_early_termination(self) -> bool:
-
         red_box_1_pos = self.scene.get_obj_pos(self.red_box_1)[:2]
         red_box_2_pos = self.scene.get_obj_pos(self.red_box_2)[:2]
         red_box_3_pos = self.scene.get_obj_pos(self.red_box_3)[:2]
@@ -587,9 +586,8 @@ class Sorting_Env(GymEnvWrapper):
         
         if seed is not None:
             self.manager.set_seed(seed)
-        
+        self.robot_des_pos = self.robot_state()[:2]
         obs = self._reset_env(random=random, context=context, if_vision=if_vision)
-
         return obs, {}
 
     def _reset_env(self, random=True, context=None, if_vision=False):
