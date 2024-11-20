@@ -468,11 +468,10 @@ class Sorting_Env(GymEnvWrapper):
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
         if self.action_type == "delta":
-            action = action + self.robot_state()[:2]
+            action = action + self.robot_des_pos
             self.robot_des_pos = action
         if action.shape[0] == 2:
-            fixed_z = self.robot_state()[2:]
-            action = np.concatenate((action, fixed_z, [0, 1, 0, 0]), axis=0)
+            action = np.concatenate((action, self.fixed_z, [0, 1, 0, 0]), axis=0)
         observation, reward, terminated, truncated, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
         self.success = self._check_early_termination()
         terminated = terminated or self.success
@@ -586,7 +585,6 @@ class Sorting_Env(GymEnvWrapper):
         
         if seed is not None:
             self.manager.set_seed(seed)
-        self.robot_des_pos = self.robot_state()[:2]
         obs = self._reset_env(random=random, context=context, if_vision=if_vision)
         return obs, {}
 
@@ -603,7 +601,8 @@ class Sorting_Env(GymEnvWrapper):
         self.robot.beam_to_joint_pos(self.robot.init_qpos)
         self.manager.start(random=random, context=context)
         self.scene.next_step(log=False)
-
+        self.robot_des_pos = self.robot_state()[:2]
+        self.fixed_z = self.robot_state()[2:]
         observation = self.get_observation()
 
         return observation
