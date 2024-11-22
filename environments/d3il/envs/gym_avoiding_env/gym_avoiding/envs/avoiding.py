@@ -136,9 +136,23 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         if self_start:
             self.start()
 
+    def get_environment_state(self):
+        
     def get_observation(self) -> np.ndarray:
-        robot_c_pos = self.robot_state()[:2]
-        return robot_c_pos.astype(np.float32)
+        robot_c_pos = self.robot_state()[:2].astype(np.float32)
+        if self.if_vision:
+            bp_img = self.bp_cam.get_image(depth=False)
+            # inhand_img = self.inhand_cam.get_image(depth=False)
+            return {
+                "agent_pos": robot_c_pos,
+                "environment_state": self.get_environment_state(),
+                "pixels": {
+                    "bp_cam": bp_img,
+                    "inhand_cam": inhand_img
+                }
+        }
+        else:
+            return robot_c_pos
 
     def start(self):
         self.scene.start()

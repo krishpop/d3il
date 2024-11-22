@@ -250,15 +250,15 @@ class CubeStacking_Env(GymEnvWrapper):
         # robot_state = self.robot_state()
 
         red_box_pos = self.scene.get_obj_pos(self.red_box)
-        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box)))
+        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box))[:2])
         # red_box_quat = np.concatenate((np.sin(red_box_quat), np.cos(red_box_quat)))
 
         green_box_pos = self.scene.get_obj_pos(self.green_box)
-        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box)))
+        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box))[:2])
         # green_box_quat = np.concatenate((np.sin(green_box_quat), np.cos(green_box_quat)))
 
         blue_box_pos = self.scene.get_obj_pos(self.blue_box)
-        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box)))
+        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box))[:2])
         # blue_box_quat = np.concatenate((np.sin(blue_box_quat), np.cos(blue_box_quat)))
 
         target_pos = self.scene.get_obj_pos(self.target_box) #- robot_c_pos

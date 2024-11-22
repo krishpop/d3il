@@ -111,7 +111,7 @@ class Stacking_Sim(BaseSim):
 
                     # print(gripper_width)
 
-                    obs, reward, done, info = env.step(pred_action)
+                    obs, reward, done, _, info = env.step(pred_action)
                     sim_step += 1
 
                 # if info['mode'] not in self.mode_keys:

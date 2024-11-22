@@ -76,7 +76,10 @@ class Stacking_Dataset(TrajectoryDataset):
         #     assert False, "wrong data type"
 
         data_dir = sim_framework_path("environments/dataset/data/stacking/all_data")
-        state_files = os.listdir(sim_framework_path(data_directory))
+        if os.path.isfile(sim_framework_path(data_directory)):
+            state_files = np.load(sim_framework_path(data_directory), allow_pickle=True)
+        else:
+            state_files = os.listdir(sim_framework_path(data_directory))
 
         for file in state_files:
             with open(os.path.join(data_dir, file), 'rb') as f:
