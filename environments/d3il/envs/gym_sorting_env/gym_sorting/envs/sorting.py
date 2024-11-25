@@ -261,9 +261,9 @@ class Sorting_Env(GymEnvWrapper):
                 })
             })
         else:
-            self.observation_space = Box(
-                low=-np.inf, high=np.inf, shape=(obs_dim,)
-            )
+            self.observation_space = Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(obs_dim,))
+            })
 
         self.interactive = interactive
 
@@ -412,7 +412,9 @@ class Sorting_Env(GymEnvWrapper):
                 }
             }
 
-        return env_state.astype(np.float32)
+        return {
+            "agent_pos": env_state.astype(np.float32)
+        }
 
     def start(self):
         self.scene.start()

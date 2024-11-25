@@ -95,11 +95,15 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
                 })
             })
         else:
-            self.observation_space = Box(low=-np.inf, high=np.inf, shape=(14,))
+            self.observation_space = gym.spaces.Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "environment_state": Box(low=-np.inf, high=np.inf, shape=(15,))
+            })
 
         self.manager = ObstacleAvoidanceManager()
 
         self.bp_cam = BPCageCam()
+        self.inhand_cam = robot.inhand_cam
 
         self.scene.add_object(self.bp_cam)
 
@@ -137,11 +141,13 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
             self.start()
 
     def get_environment_state(self):
-        
+        pass
+
     def get_observation(self) -> np.ndarray:
         robot_c_pos = self.robot_state()[:2].astype(np.float32)
         if self.if_vision:
             bp_img = self.bp_cam.get_image(depth=False)
+            inhand_img = self.inhand_cam.get_image(depth=False)
             # inhand_img = self.inhand_cam.get_image(depth=False)
             return {
                 "agent_pos": robot_c_pos,
@@ -150,9 +156,12 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
                     "bp_cam": bp_img,
                     "inhand_cam": inhand_img
                 }
-        }
+            }
         else:
-            return robot_c_pos
+            return {
+                "agent_pos": robot_c_pos,
+                "environment_state": self.get_environment_state()
+            }
 
     def start(self):
         self.scene.start()

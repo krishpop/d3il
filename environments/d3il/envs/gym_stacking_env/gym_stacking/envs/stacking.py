@@ -182,7 +182,10 @@ class CubeStacking_Env(GymEnvWrapper):
                 })
             })
         else:
-            self.observation_space = Box(low=-np.inf, high=np.inf, shape=(20,))
+            self.observation_space = gym.spaces.Dict({
+                "agent_pos": Box(low=-np.inf, high=np.inf, shape=(8,)),
+                "environment_state": Box(low=-np.inf, high=np.inf, shape=(15,)),
+            })
 
         self.interactive = interactive
 
@@ -250,15 +253,15 @@ class CubeStacking_Env(GymEnvWrapper):
         # robot_state = self.robot_state()
 
         red_box_pos = self.scene.get_obj_pos(self.red_box)
-        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box))[:2])
+        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box)))
         # red_box_quat = np.concatenate((np.sin(red_box_quat), np.cos(red_box_quat)))
 
         green_box_pos = self.scene.get_obj_pos(self.green_box)
-        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box))[:2])
+        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box)))
         # green_box_quat = np.concatenate((np.sin(green_box_quat), np.cos(green_box_quat)))
 
         blue_box_pos = self.scene.get_obj_pos(self.blue_box)
-        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box))[:2])
+        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box)))
         # blue_box_quat = np.concatenate((np.sin(blue_box_quat), np.cos(blue_box_quat)))
 
         target_pos = self.scene.get_obj_pos(self.target_box) #- robot_c_pos
@@ -298,8 +301,11 @@ class CubeStacking_Env(GymEnvWrapper):
                     "inhand_cam": inhand_image
                 }
             }
-
-        return env_state.astype(np.float32)
+        else:
+            return {
+                "agent_pos": j_state,
+                "environment_state": env_state
+            }
 
     def start(self):
         self.scene.start()
