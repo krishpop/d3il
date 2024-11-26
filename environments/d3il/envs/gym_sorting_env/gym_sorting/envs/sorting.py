@@ -574,7 +574,10 @@ class Sorting_Env(GymEnvWrapper):
 
         return False
 
-    def reset(self, seed=None, random=True, context=None, if_vision=False):
+    def reset(self, seed=None, options=None, random=True, context=None, if_vision=False):
+        if options:
+            random = options["random"]
+            context = options["context"]
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
