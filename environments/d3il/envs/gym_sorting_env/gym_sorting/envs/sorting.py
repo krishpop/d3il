@@ -487,6 +487,7 @@ class Sorting_Env(GymEnvWrapper):
             mode = mode[:6]
 
         mode = self.decode_mode(mode)
+        reward = 1.0 if self.success else 0
 
         return observation, reward, terminated, truncated, {'mode': mode, 'is_success':  self.success, 'min_inds': min_inds}
 

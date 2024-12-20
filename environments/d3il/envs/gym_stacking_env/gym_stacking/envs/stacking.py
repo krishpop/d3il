@@ -381,7 +381,7 @@ class CubeStacking_Env(GymEnvWrapper):
             self.scene.next_step()
 
         observation = self.get_observation()
-        reward = self.get_reward()
+        # reward = self.get_reward()
         terminated = self.is_finished()
         truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
@@ -400,6 +400,7 @@ class CubeStacking_Env(GymEnvWrapper):
             'success_2': len(mode) > 1,
             'mean_distance': mean_distance
         }
+        reward = 1.0 if info['is_success'] else 0
 
         return observation, reward, terminated, truncated, info
 
